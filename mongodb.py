@@ -1,7 +1,9 @@
 from io import StringIO
-from typing import Dict, List
+from typing import List
 
+import json
 import pandas as pd
+
 import pymongo
 from pymongo import MongoClient
 from tqdm import tqdm
@@ -60,6 +62,54 @@ class Chunk:
             lookup_dict[chunk["key"]] = chunk["data"]
 
         return lookup_dict
+    
+    
+    def prepare_data(self, collection_name: str, filenames: List[str]):
+        all_data = {}
+        content = ""
+        ids = []
+        cnt = 0
+        for r in tqdm(
+            self.database[collection_name].find(
+                {"data.filename": {"$in": filenames}}
+            )
+        ):
+            if "type" not in r["data"]:
+                continue
+
+            if "id" in r["data"] and r["data"]["id"] in ids:
+                continue
+
+            if r["data"]["type"] == "text":
+                text = r["data"]["llm_context"]
+                data_id = r["key"]
+
+            elif r["data"]["type"] == "table":
+                df = pd.read_json(StringIO(r["data"]["table"]))
+                text = f"Title of table is {r['data']['title']}\n{df.to_markdown()}"
+                ids.append(r["data"]["id"])
+                data_id = r["data"]["id"]
+
+            content += (
+                text.split("This is the summary of the surrounding context:")[0]
+                .split("This is the original content:")[-1]
+                .strip()
+            )
+            content += "\n\n"
+            cnt += 1
+            all_data[data_id] = text
+
+        os.makedirs("data", exist_ok=True)
+        with open("data/text.md", "w") as f:
+            f.write(content)
+
+        with open("data/chunks.json", "w") as f:
+            json.dump(all_data, f, indent=4)
+
+        print(cnt)
+                
 
 
-chunk_db = Chunk()
+if __name__ == "__main__":
+    chunk_db = Chunk()
+    chunk_db.prepare_data("INFINEON-AUTOMOTIVE_chunks", ["Infineon-TC39x-DataSheet-v01_02-EN.pdf"])

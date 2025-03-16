@@ -7,22 +7,6 @@ from typing import List, Tuple, Optional, Dict
 from unsloth import FastLanguageModel
 from vllm import SamplingParams
 
-# Load the Llama model (adjust parameters as needed)
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="meta-llama/meta-Llama-3.1-8B-Instruct",
-    max_seq_length=4096,
-    load_in_4bit=True,  # Use 4-bit quantization if desired
-    fast_inference=True,  # Enable fast inference
-    gpu_memory_utilization=0.6,  # Adjust based on your GPU memory
-)
-
-# Define sampling parameters for generation
-sampling_params = SamplingParams(
-    temperature=0.3,
-    top_p=0.95,
-    max_tokens=4096,
-)
-
 
 def batch_generate(prompts: List[str]) -> List[str]:
     """
@@ -91,7 +75,7 @@ def parse_multiple_qa_output(output: str) -> List[Tuple[str, str, str]]:
 
 
 def generate_question_batch_for_chunks(
-    chunks: List, num_questions: int = 2, difficulty: str = None
+    chunks: List, num_questions: int = 2, context_size: int = 2
 ) -> List[Dict]:
     """
     Generates QA pairs for multiple chunks in batch.
@@ -108,13 +92,14 @@ def generate_question_batch_for_chunks(
     """
     prompts = []
     chunk_ids = []
-    chunks = list(chunks.values())
+    data_chunk_ids = list(chunks.keys())
+    data_text_chunks = list(chunks.values())
 
     # Prepare prompts using a sliding window
-    for i in range(1, len(chunks) - 1):
-        before = chunks[i - 1].page_content
-        current = chunks[i].page_content
-        after = chunks[i + 1].page_content
+    for i in range(1, len(data_text_chunks) - 1):
+        before = data_text_chunks[i - context_size:i]
+        current = data_text_chunks[i]
+        after = data_text_chunks[i + 1:i + context_size]
         prompt = (
             f"From the text within ==BEGIN== and ==END==, generate {num_questions} questions with answers.\n"
             "For each QA pair, output exactly three lines with no extra commentary:\n"
@@ -122,12 +107,13 @@ def generate_question_batch_for_chunks(
             "Line 2: Answer: <the answer>\n"
             "Line 3: Difficulty: <easy, medium, or hard>\n"
             "Do not include any additional text.\n\n"
+            "IMPORTANT: All of the questions must be different from each other.\n"
             "==BEGIN==\n"
             f"{before}\n{current}\n{after}\n"
             "==END==\n"
         )
         prompts.append(prompt)
-        chunk_ids.append(i)
+        chunk_ids.append(data_chunk_ids[i])
 
     # First batch generation
     outputs = batch_generate(prompts)
@@ -141,6 +127,20 @@ def generate_question_batch_for_chunks(
             failed_indices.append(idx)
         else:
             results[idx] = qa_pairs[:num_questions]
+
+    final_questions = []
+    for i, qa_list in enumerate(results):
+        if qa_list is not None:
+            for qa in qa_list:
+                final_questions.append(
+                    {
+                        "chunk_id": chunk_ids[i],
+                        "question": qa[0],
+                        "answer": qa[1],
+                        "difficulty": qa[2],
+                    }
+                )
+    json.dump(final_questions, open("data/questions.json", "w"), indent=4)
 
     # Retry failed prompts in batch
     if failed_indices:
@@ -167,19 +167,30 @@ def generate_question_batch_for_chunks(
                         "difficulty": qa[2],
                     }
                 )
-    return final_questions
+    json.dump(final_questions, open("data/questions.json", "w"), indent=4)
 
 
-chunks = json.load(open("data/chunks.json", "rb"))
 
-# Generate QA pairs in batch (using a sliding window over the chunks)
-all_questions = generate_question_batch_for_chunks(
-    chunks, num_questions=2, difficulty="medium"
-)
-print(f"Generated {len(all_questions)} QA pairs.")
+if __name__ == "__main__":
+    chunks = json.load(open("data/chunks.json", "rb"))
+    
+    # Load the Llama model (adjust parameters as needed)
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name="meta-llama/meta-Llama-3.1-8B-Instruct",
+        max_seq_length=32000,
+        load_in_4bit=True,  # Use 4-bit quantization if desired
+        fast_inference=True,  # Enable fast inference
+        gpu_memory_utilization=0.8,  # Adjust based on your GPU memory
+    )
 
-# Save the QA pairs to a JSON file
-questions_path = os.path.join("data", "questions.json")
-with open(questions_path, "w") as f:
-    json.dump(all_questions, f, indent=2)
-print(f"Saved questions to {questions_path}")
+    # Define sampling parameters for generation
+    sampling_params = SamplingParams(
+        temperature=0.3,
+        top_p=0.95,
+        max_tokens=64000,
+    )
+
+    # Generate QA pairs in batch (using a sliding window over the chunks)
+    generate_question_batch_for_chunks(
+        chunks, num_questions=8, context_size=5
+    )

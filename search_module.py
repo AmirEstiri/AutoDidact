@@ -82,8 +82,8 @@ def load_qa_data():
         import os
         # Get absolute paths to data files
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        chunks_path = os.path.join(base_dir, "saved_data", "chunks.pkl")
-        questions_path = os.path.join(base_dir, "saved_data", "questions.json")
+        chunks_path = os.path.join(base_dir, "data", "chunks.pkl")
+        questions_path = os.path.join(base_dir, "data", "questions.json")
         
         print(f"Loading chunks from: {chunks_path}")
         print(f"Loading questions from: {questions_path}")
