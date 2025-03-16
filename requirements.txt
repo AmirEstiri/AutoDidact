@@ -1,5 +1,4 @@
 datasets
-faiss-gpu
 langchain
 langchain-community
 Markdown
@@ -10,3 +9,8 @@ unsloth_zoo==2025.3.4
 unstructured
 vllm
 wandb
+pandas
+pymongo
+python-dotenv
+tqdm
+tabulate
