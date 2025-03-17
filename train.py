@@ -1,7 +1,9 @@
-import rl_helpers
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel
-from rl_helpers import get_qa_dataset
+from vllm import SamplingParams
+
+import UnslothGRPOTrainerTemp
+from rl_helpers import get_qa_dataset, run_agent, build_reward_correctness_fn, reward_formatting
 
 train_dataset, test_dataset = get_qa_dataset()
 
@@ -14,23 +16,21 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
     max_lora_rank = lora_rank,
-    gpu_memory_utilization = 0.9, # Reduce if out of memory
+    gpu_memory_utilization = 0.8, # Reduce if out of memory
 )
 
 model = FastLanguageModel.get_peft_model(
     model,
-    r = lora_rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r=lora_rank, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = [
         "q_proj", "k_proj", "v_proj", "o_proj",
         "gate_proj", "up_proj", "down_proj",
     ], # Remove QKVO if out of memory
-    lora_alpha = lora_rank,
-    use_gradient_checkpointing = "unsloth", # Enable long context finetuning
-    random_state = 3407,
+    lora_alpha=lora_rank,
+    use_gradient_checkpointing="unsloth", # Enable long context finetuning
+    random_state=3407,
 )
 
-# from UnslothGRPOTrainerTemp import UnslothGRPOConfig, _UnslothGRPOTrainer
-import UnslothGRPOTrainerTemp
 training_args = UnslothGRPOTrainerTemp.UnslothGRPOConfig(
     use_vllm = True, # use vLLM for fast inference!
     use_agentic_generate = True, # use agentic generation
@@ -50,40 +50,29 @@ training_args = UnslothGRPOTrainerTemp.UnslothGRPOConfig(
     max_prompt_length = 1024,
     max_completion_length = 1024,
     # num_train_epochs = 1, # Set to 1 for a full training run
-    max_steps = 1000,
+    max_steps = 10,
     save_steps = 100,
     max_grad_norm = 0.1,
     report_to = "none", # Can use Weights & Biases
-    output_dir = "full_local_training",
+    output_dir = "checkpoints",
 )
 
-def agentic_generate(
-        prompts:list[str],
-        generate_fn,
-        max_generations:int=6,
-        ):
-    return run_agent(generate_fn, tokenizer, prompts, max_generations)
-model.agentic_generate = agentic_generate
-
-
-from vllm import SamplingParams
-verifier_sampling_params = SamplingParams(
-    temperature = 0.1,
-    top_p = 0.95,
-    max_tokens = 32000,
+model.agentic_generate = lambda prompts, generate_fn, max_generations=6: run_agent(
+    generate_fn, tokenizer, prompts, max_generations
 )
-def verifier_generate_fn(inputs):
-    return model.fast_generate(
-        inputs,
-        sampling_params = verifier_sampling_params,
-    )
 
+reward_correctness = build_reward_correctness_fn(
+    lambda inputs: model.fast_generate(
+        inputs, 
+        sampling_params = SamplingParams(
+            temperature = 0.1,
+            top_p = 0.95,
+            max_tokens = 32000,
+        )
+    ), 
+    tokenizer
+)
 
-run_agent = rl_helpers.run_agent
-reward_correctness = rl_helpers.build_reward_correctness_fn(verifier_generate_fn, tokenizer,)
-reward_formatting = rl_helpers.reward_formatting
-
-import UnslothGRPOTrainerTemp
 trainer = UnslothGRPOTrainerTemp.UnslothGRPOTrainer(
     model = model,
     processing_class = tokenizer,

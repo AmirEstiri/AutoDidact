@@ -21,14 +21,9 @@ from trl.trainer.grpo_trainer import apply_chat_template
 # Constants for prompts and tool definitions
 def get_system_prompt():
     """Get the system prompt with current date."""
-    current_date = datetime.now().strftime("%d %b %Y")
-    return f"""Cutting Knowledge Date: December 2023
-Today Date: {current_date}
-
-When you receive a tool call response, use the output to format an answer to the original user question.
-
-You are a helpful assistant with tool calling capabilities.
-"""
+    return f"""When you receive a tool call response, use the output to format an answer to the original user question.
+    You are a helpful assistant with tool calling capabilities.
+    """
 
 # Tool definition for search corpus
 SEARCH_TOOL_DEFINITION = {
@@ -357,7 +352,7 @@ async def check_correctness(question, student_answer, answer):
         float: Reward value (1 for correct, 0 for incorrect)
     """
     # log to "./reward_func.log"
-    with open("reward_func.log", "a") as f:
+    with open("./reward_func.log", "a") as f:
         f.write("\n"+"=="*40 + "\n\n")
         f.write(f"Question: {question}\n")
         f.write(f"Student Answer: {student_answer}\n")
@@ -466,20 +461,15 @@ def reward_formatting(prompts, completions, **reward_kwargs):
                 break
     return [0.7 if not e else 0 for e in has_error]
 
-
-
-
 def run_eval(generate_fn, verify_fn, tokenizer):
-    train_dataset, test_dataset = get_qa_dataset()
+    _, test_dataset = get_qa_dataset()
     questions = test_dataset["prompt"]
     agentic_outputs = run_agent(generate_fn, tokenizer, questions)
     full_chat_states = agentic_outputs.full_chat_states
-    final_responses = agentic_outputs.final_response_str
+    # final_responses = agentic_outputs.final_response_str
     rewards = verify_fn(questions, full_chat_states, answer=test_dataset["answer"])
 
     print("RESULTS:")
     print("percentage of correct answers:", sum(rewards) / len(rewards))
     print("="*30)
-
-
     return full_chat_states

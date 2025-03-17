@@ -6,27 +6,18 @@ This module provides functions to search through vectorized documents and retrie
 import pickle
 import json
 import random
-import asyncio
-from typing import List, Tuple, Optional, Union, Dict, Any
-from enum import Enum
-from pydantic import BaseModel
-from langchain.vectorstores import FAISS
+from typing import List, Optional, Union
+from langchain_community.vectorstores import FAISS
 from datasets import Dataset
 from embeddings import CustomHuggingFaceEmbeddings
 
     
-
-
-
-
 # Load pre-saved vectorstore
-def load_vectorstore():
+def load_vectorstore(index_path: str = "data/faiss_index"):
     """Load the pre-saved FAISS index"""
     try:
-        import os
         embeddings = CustomHuggingFaceEmbeddings()
         # Load the FAISS index with absolute path
-        index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faiss_index")
         print(f"Loading FAISS index from: {index_path}")
         vectorstore = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
         print("Successfully loaded FAISS index")
@@ -39,7 +30,7 @@ def load_vectorstore():
 
 # Load the vectorstore when module is imported
 try:
-    vectorstore = load_vectorstore()
+    vectorstore = load_vectorstore("data/faiss_index")
     if vectorstore is None:
         print("Warning: FAISS vectorstore could not be loaded.")
 except Exception as e:
@@ -76,14 +67,13 @@ def search(query: str, return_type=str, results: int = 5) -> Union[str, List[str
         raise ValueError("Invalid return_type. Use str or list.")
 
 # Load questions from saved data
-def load_qa_data():
+def load_qa_data(base_dir: str = "data"):
     """Load the pre-generated questions and document chunks"""
     try:
         import os
         # Get absolute paths to data files
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        chunks_path = os.path.join(base_dir, "data", "chunks.pkl")
-        questions_path = os.path.join(base_dir, "data", "questions.json")
+        chunks_path = os.path.join(base_dir, "chunks.pkl")
+        questions_path = os.path.join(base_dir, "questions.json")
         
         print(f"Loading chunks from: {chunks_path}")
         print(f"Loading questions from: {questions_path}")
@@ -106,7 +96,7 @@ def load_qa_data():
 
 # Load chunks and questions when module is imported
 try:
-    chunks, questions = load_qa_data()
+    chunks, questions = load_qa_data("data")
     if chunks is None or questions is None:
         print("Warning: Could not load QA data.")
 except Exception as e:
