@@ -86,18 +86,19 @@ class Chunk:
 
             elif r["data"]["type"] == "table":
                 df = pd.read_json(StringIO(r["data"]["table"]))
-                text = f"Title of table is {r['data']['title']}\n{df.to_markdown()}"
+                text = f"{r['data']['title']}\n{df.to_markdown()}"
                 ids.append(r["data"]["id"])
                 data_id = r["data"]["id"]
 
-            content += (
+            cleaned_text = (
                 text.split("This is the summary of the surrounding context:")[0]
                 .split("This is the original content:")[-1]
                 .strip()
             )
+            content += cleaned_text
             content += "\n\n"
             cnt += 1
-            all_data[data_id] = text
+            all_data[data_id] = cleaned_text
 
         os.makedirs("data", exist_ok=True)
         with open("data/text.md", "w") as f:

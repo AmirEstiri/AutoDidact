@@ -1,4 +1,3 @@
-import os
 import re
 import json
 from typing import List, Tuple, Optional, Dict
@@ -101,11 +100,11 @@ def generate_question_batch_for_chunks(
         current = data_text_chunks[i]
         after = data_text_chunks[i + 1:i + context_size]
         prompt = (
-            f"From the text within ==BEGIN== and ==END==, generate {num_questions} questions with answers.\n"
-            "For each QA pair, output exactly three lines with no extra commentary:\n"
+            f"You are a hardware and electrical engineering expert. You are given a technical text and asked to generate questions and answers from it.\n"
+            f"From the tecnical text within ==BEGIN== and ==END==, generate {num_questions} questions with answers.\n"
+            "For each QA pair, output exactly two lines with no extra commentary:\n"
             "Line 1: Question: <your question>\n"
             "Line 2: Answer: <the answer>\n"
-            "Line 3: Difficulty: <easy, medium, or hard>\n"
             "Do not include any additional text.\n\n"
             "IMPORTANT: All of the questions must be different from each other.\n"
             "==BEGIN==\n"
@@ -137,7 +136,6 @@ def generate_question_batch_for_chunks(
                         "chunk_id": chunk_ids[i],
                         "question": qa[0],
                         "answer": qa[1],
-                        "difficulty": qa[2],
                     }
                 )
     json.dump(final_questions, open("data/questions.json", "w"), indent=4)
@@ -164,7 +162,6 @@ def generate_question_batch_for_chunks(
                         "chunk_id": chunk_ids[i],
                         "question": qa[0],
                         "answer": qa[1],
-                        "difficulty": qa[2],
                     }
                 )
     json.dump(final_questions, open("data/questions.json", "w"), indent=4)

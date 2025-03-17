@@ -6,13 +6,9 @@ and calculating rewards based on the quality of responses.
 
 import json
 import re
-import asyncio
 import torch
-from datetime import datetime
 from search_module import search, get_qa_dataset
 from dataclasses import dataclass
-import nest_asyncio
-nest_asyncio.apply()
 from typing import List, Callable
 
 
@@ -54,7 +50,7 @@ def build_user_prompt(q):
     Returns:
         str: Formatted user prompt
     """
-    user_prompt = f"""You are a research assistant, and you use the search_corpus tool to find answers to questions.
+    user_prompt = f"""You are a research assistant and expert in the field of hardware and electrical engineering, and you use the search_corpus tool to find answers to questions.
 Given a question, answer it using by doing searches using the search_corpus tool.
 To use the search_corpus tool, respond with a JSON for a function call with its proper arguments.
 
