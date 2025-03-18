@@ -28,7 +28,7 @@ model = FastLanguageModel.get_peft_model(
     ], # Remove QKVO if out of memory
     lora_alpha=lora_rank,
     use_gradient_checkpointing="unsloth", # Enable long context finetuning
-    random_state=3407,
+    random_state=7807,
 )
 
 training_args = UnslothGRPOTrainerTemp.UnslothGRPOConfig(
@@ -48,9 +48,9 @@ training_args = UnslothGRPOTrainerTemp.UnslothGRPOConfig(
     gradient_accumulation_steps = 4, # Increase to 4 for smoother training
     num_generations = 8, # Decrease if out of memory
     max_prompt_length = 1024,
-    max_completion_length = 1024,
+    max_completion_length = 4096,
     # num_train_epochs = 1, # Set to 1 for a full training run
-    max_steps = 10,
+    max_steps = 500,
     save_steps = 100,
     max_grad_norm = 0.1,
     report_to = "none", # Can use Weights & Biases

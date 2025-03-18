@@ -18,7 +18,9 @@ from trl.trainer.grpo_trainer import apply_chat_template
 def get_system_prompt():
     """Get the system prompt with current date."""
     return f"""When you receive a tool call response, use the output to format an answer to the original user question.
-    You are a helpful assistant with tool calling capabilities.
+    You are an expert in the field of hardware and electrical engineering.
+    Your answer should address the user's question directly. Do not write the tool call response in your answer.
+    But you can give a concise summary of the tool call response that is relevant to the user's question only if it is necessary.
     """
 
 # Tool definition for search corpus
@@ -214,7 +216,7 @@ def run_tool_calls(chat_states):
             elif len(function_calls) == 1:
                 function_call = function_calls[0]
                 query = function_call["function"]["parameters"]["query"]
-                results = search(query, return_type=str, results=2)
+                results = search(query, return_type=str, results=10)
                 chat_state["messages"].append({
                     "role": "ipython",
                     "content": results
@@ -402,7 +404,7 @@ def check_student_answers(
             "compare the student's answer to the correct answer. Reply with 'Yes' if the student's answer is correct, or 'No' if it is completely incorrect.\n\n"
             f"Question: {question}\n"
             f"Correct Answer: {answer}\n"
-            f"Student Answer: {student_ans}\n"
+            f"Provided Answer: {student_ans}\n"
         )
         # Apply the chat template to the prompt.
         formatted_prompt = tokenizer.apply_chat_template(

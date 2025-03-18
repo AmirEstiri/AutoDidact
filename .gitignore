@@ -11,6 +11,7 @@ grpo_trainer_lora_model*
 rwd_code/
 saved_data
 saved_data_old/
+checkpoints/
 trash/
 unsloth_compiled_cache
 faiss_index/
